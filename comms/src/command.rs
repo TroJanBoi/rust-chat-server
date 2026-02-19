@@ -27,6 +27,15 @@ pub struct SendMessageCommand {
     pub content: String,
 }
 
+/// User Command for retrieving chat history of a room.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GetHistoryCommand {
+    /// The room to retrieve history from.
+    #[serde(rename = "r")]
+    pub room: String,
+}
+
+
 /// User Command for quitting the whole chat session.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct QuitCommand;
@@ -39,6 +48,7 @@ pub enum UserCommand {
     JoinRoom(JoinRoomCommand),
     LeaveRoom(LeaveRoomCommand),
     SendMessage(SendMessageCommand),
+    GetHistory(GetHistoryCommand),
     Quit(QuitCommand),
 }
 
@@ -88,4 +98,14 @@ mod tests {
 
         assert_command_serialization(&command, r#"{"_ct":"quit"}"#);
     }
+
+    #[test]
+    fn test_get_history_command() {
+        let command = UserCommand::GetHistory(GetHistoryCommand {
+            room: "test".to_string(),
+        });
+
+        assert_command_serialization(&command, r#"{"_ct":"get_history","r":"test"}"#);
+    }
+
 }

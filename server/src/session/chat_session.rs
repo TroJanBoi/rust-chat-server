@@ -76,10 +76,25 @@ impl ChatSession {
                 // this is used to send messages to the room and to cancel the task when user leaves the room
                 self.joined_rooms
                     .insert(cmd.room.clone(), (user_session_handle, abort_handle));
+                
+                if let Some((user_session_handle, _)) = self.joined_rooms.get(&cmd.room) {
+                    // get the history of the room and send it to the user after joining the room
+                    let history = {
+                        let room = user_session_handle.chat_room.lock().await;
+                        room.get_history()
+                    };
+
+                    self.mpsc_tx
+                        .send(Event::RoomHistory(event::RoomHistoryReplyEvent {
+                            room: cmd.room.clone(),
+                            messages: history,
+                        }))
+                        .await?;
+                }
             }
             UserCommand::SendMessage(cmd) => {
                 if let Some((user_session_handle, _)) = self.joined_rooms.get(&cmd.room) {
-                    let _ = user_session_handle.send_message(cmd.content);
+                    let _ = user_session_handle.send_message(cmd.content).await;
                 }
             }
             UserCommand::LeaveRoom(cmd) => {

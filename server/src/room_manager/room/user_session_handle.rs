@@ -1,8 +1,12 @@
 use anyhow::Context;
 use comms::event;
-use tokio::sync::broadcast;
+use std::sync::Arc;
+use tokio::sync::{broadcast, Mutex};
+
+use super::ChatRoom;
 
 #[derive(Debug, Clone)]
+
 pub struct SessionAndUserId {
     pub session_id: String,
     pub user_id: String,
@@ -20,6 +24,8 @@ pub struct UserSessionHandle {
     broadcast_tx: broadcast::Sender<event::Event>,
     /// The session and user id associated with this handle
     session_and_user_id: SessionAndUserId,
+
+    pub(crate) chat_room: Arc<Mutex<ChatRoom>>,
 }
 
 impl UserSessionHandle {
@@ -27,11 +33,13 @@ impl UserSessionHandle {
         room: String,
         broadcast_tx: broadcast::Sender<event::Event>,
         session_and_user_id: SessionAndUserId,
+        chat_room: Arc<Mutex<ChatRoom>>,
     ) -> Self {
         UserSessionHandle {
             room,
             broadcast_tx,
             session_and_user_id,
+            chat_room,
         }
     }
 
@@ -47,16 +55,21 @@ impl UserSessionHandle {
         &self.session_and_user_id.user_id
     }
 
-    /// Send a message to the room
-    pub fn send_message(&self, content: String) -> anyhow::Result<()> {
+    // Send a message to the room
+    pub async fn send_message(&self, content: String) -> anyhow::Result<()> {
+        let message_event = event::UserMessageBroadcastEvent {
+            room: self.room.clone(),
+            user_id: self.session_and_user_id.user_id.clone(),
+            content,
+        };
+
+        {
+            let mut room = self.chat_room.lock().await;
+            room.record_message(&message_event);
+        }
+
         self.broadcast_tx
-            .send(event::Event::UserMessage(
-                event::UserMessageBroadcastEvent {
-                    room: self.room.clone(),
-                    user_id: self.session_and_user_id.user_id.clone(),
-                    content,
-                },
-            ))
+            .send(event::Event::UserMessage(message_event))
             .context("could not write to the broadcast channel")?;
 
         Ok(())

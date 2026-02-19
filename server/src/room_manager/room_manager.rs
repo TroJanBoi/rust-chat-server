@@ -39,13 +39,14 @@ impl RoomManager {
         room_name: &str,
         session_and_user_id: &SessionAndUserId,
     ) -> anyhow::Result<RoomJoinResult> {
-        let room = self
+        let room_arc = self
             .chat_rooms
             .get(room_name)
-            .ok_or_else(|| anyhow::anyhow!("room '{}' not found", room_name))?;
+            .ok_or_else(|| anyhow::anyhow!("room '{}' not found", room_name))?
+            .clone();
 
-        let mut room = room.lock().await;
-        let (broadcast_rx, user_session_handle) = room.join(session_and_user_id);
+        let mut room = room_arc.lock().await;
+        let (broadcast_rx, user_session_handle) = room.join(session_and_user_id, room_arc.clone());
 
         Ok((
             broadcast_rx,

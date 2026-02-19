@@ -72,6 +72,18 @@ pub struct UserMessageBroadcastEvent {
     pub content: String,
 }
 
+/// A reply containing the recent message history of a room
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RoomHistoryReplyEvent {
+    /// The room slug
+    #[serde(rename = "r")]
+    pub room: String,
+    /// List of messages (ordered oldest → newest)
+    #[serde(rename = "ms")]
+    pub messages: Vec<UserMessageBroadcastEvent>,
+}
+
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "_et", rename_all = "snake_case")]
 /// Events that can be sent to the client
@@ -81,6 +93,7 @@ pub enum Event {
     RoomParticipation(RoomParticipationBroadcastEvent),
     UserJoinedRoom(UserJoinedRoomReplyEvent),
     UserMessage(UserMessageBroadcastEvent),
+    RoomHistory(RoomHistoryReplyEvent),
 }
 
 #[cfg(test)]
@@ -166,4 +179,18 @@ mod tests {
             r#"{"_et":"user_message","r":"test","u":"test","c":"test"}"#,
         );
     }
+
+    #[test]
+    fn test_room_history_event() {
+        let event = Event::RoomHistory(RoomHistoryReplyEvent {
+            room: "test".to_string(),
+            messages: vec![],
+        });
+
+        assert_event_serialization(
+            &event,
+            r#"{"_et":"room_history","r":"test","ms":[]}"#,
+        );
+    }
+
 }

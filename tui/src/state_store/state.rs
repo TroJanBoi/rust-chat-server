@@ -109,6 +109,22 @@ impl State {
                     .map(|r| (r.name.clone(), RoomData::new(r.name, r.description)))
                     .collect();
             }
+
+            event::Event::RoomHistory(history_event) => {
+            if let Some(room_data) = self.room_data_map.get_mut(&history_event.room) {
+                // ล้างของเก่าก่อน
+                room_data.messages.clear();
+
+                // เติม history เข้า CircularQueue
+                for msg in &history_event.messages {
+                    room_data.messages.push(MessageBoxItem::Message {
+                        user_id: msg.user_id.clone(),
+                        content: msg.content.clone(),
+                    });
+                }
+                }
+            }
+
             event::Event::RoomParticipation(event) => {
                 if let Some(room_data) = self.room_data_map.get_mut(&event.room) {
                     match event.status {
